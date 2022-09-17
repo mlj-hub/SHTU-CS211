@@ -54,6 +54,7 @@ const char *INSTNAME[]{
     "srli", "srai",  "add",   "sub",   "sll",   "slt",  "sltu", "xor",  "srl",
     "sra",  "or",    "and",   "ecall", "addiw", "mul",  "mulh", "div",  "rem",
     "lwu",  "slliw", "srliw", "sraiw", "addw",  "subw", "sllw", "srlw", "sraw",
+    "lr", "sc",
 };
 
 } // namespace RISCV
@@ -213,6 +214,7 @@ void Simulator::decode() {
   {
     uint32_t opcode = inst & 0x7F;
     uint32_t funct3 = (inst >> 12) & 0x7;
+    uint32_t funct5 = (inst >> 27) & 0x1f;
     uint32_t funct7 = (inst >> 25) & 0x7F;
     RegId rd = (inst >> 7) & 0x1F;
     RegId rs1 = (inst >> 15) & 0x1F;
@@ -624,6 +626,34 @@ void Simulator::decode() {
         this->panic("Unknown 32bit funct3 0x%x\n", funct3);
       }
     } break;
+    case OP_ATOMIC:{
+      op1 = this->reg[rs1];
+      op2 = this->reg[rs2];
+      reg1 = rs1;
+      reg2 = rs2;
+      dest = rd;
+      offset = 0;
+      switch(funct5){
+        case 0x02:
+          instname = "lr";
+          insttype = LR;
+          op1str = REGNAME[rs1];
+          deststr = REGNAME[rd];
+          inststr = instname + " " + deststr + "," + op1str ;
+          break;
+        case 0x03:
+          instname = "sc";
+          insttype = SC;
+          op1str = REGNAME[rs1];
+          op2str = REGNAME[rs2];
+          deststr = REGNAME[rd];
+          inststr = instname + " " + deststr + "," + op1str + "," + op2str;
+          break;
+        default:
+          this->panic("Unkown atomic funct5 0x%x\n",funct5);
+      }
+      break;
+    }
     default:
       this->panic("Unsupported opcode 0x%x!\n", opcode);
     }

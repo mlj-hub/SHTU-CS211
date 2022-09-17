@@ -118,6 +118,8 @@ enum Inst {
   SLLW = 51,
   SRLW = 52,
   SRAW = 53,
+  LR = 54,
+  SC = 55,
   UNKNOWN = -1,
 };
 extern const char *INSTNAME[];
@@ -135,6 +137,7 @@ const int OP_JAL = 0x6F;
 const int OP_JALR = 0x67;
 const int OP_IMM32 = 0x1B;
 const int OP_32 = 0x3B;
+const int OP_ATOMIC = 0x2f;
 
 inline bool isBranch(Inst inst) {
   if (inst == BEQ || inst == BNE || inst == BLT || inst == BGE ||
