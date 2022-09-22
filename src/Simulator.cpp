@@ -1088,6 +1088,10 @@ void Simulator::excecute() {
     this->reservation_set.memlen = 8;
   }
 
+  if (inst == SCW || inst == SCD){
+    this->reservation_set.valid = false;
+  }
+
   this->eRegNew.bubble = false;
   this->eRegNew.stall = false;
   this->eRegNew.pc = dRegPC;
