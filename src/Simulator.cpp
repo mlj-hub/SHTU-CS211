@@ -54,7 +54,7 @@ const char *INSTNAME[]{
     "srli", "srai",  "add",   "sub",   "sll",   "slt",  "sltu", "xor",  "srl",
     "sra",  "or",    "and",   "ecall", "addiw", "mul",  "mulh", "div",  "rem",
     "lwu",  "slliw", "srliw", "sraiw", "addw",  "subw", "sllw", "srlw", "sraw",
-    "lr", "sc",
+    "lrw", "scw",
 };
 
 } // namespace RISCV
@@ -635,15 +635,15 @@ void Simulator::decode() {
       offset = 0;
       switch(funct5){
         case 0x02:
-          instname = "lr";
-          insttype = LR;
+          instname = "lrw";
+          insttype = LRW;
           op1str = REGNAME[rs1];
           deststr = REGNAME[rd];
           inststr = instname + " " + deststr + "," + op1str ;
           break;
         case 0x03:
-          instname = "sc";
-          insttype = SC;
+          instname = "scw";
+          insttype = SCW;
           op1str = REGNAME[rs1];
           op2str = REGNAME[rs2];
           deststr = REGNAME[rd];
@@ -951,14 +951,14 @@ void Simulator::excecute() {
     out = handleSystemCall(op1, op2);
     writeReg = true;
     break;
-  case LR:
+  case LRW:
     readMem = true;
     writeReg = true;
     memLen = 4;
     out = op1 + offset;
     readSignExt = true;
     break;
-  case SC:
+  case SCW:
     writeMem = true;
     writeReg = true;
     memLen = 4;
@@ -1002,7 +1002,7 @@ void Simulator::excecute() {
   }
 
   int64_t temp_out=0;
-  if(inst == SC){
+  if(inst == SCW){
     if(!this->reservation_set.valid || !(out==this->reservation_set.addr)){
       writeMem = false;
       writeReg = true;
@@ -1014,7 +1014,7 @@ void Simulator::excecute() {
   // Check for data hazard and forward data
   if (writeReg && destReg != 0 && !isReadMem(inst)) {
     if (this->dRegNew.rs1 == destReg) {
-      this->dRegNew.op1 = (inst==SC)?temp_out:out;
+      this->dRegNew.op1 = (inst==SCW)?temp_out:out;
       this->executeWBReg = destReg;
       this->executeWriteBack = true;
       this->history.dataHazardCount++;
@@ -1022,7 +1022,7 @@ void Simulator::excecute() {
         printf("  Forward Data %s to Decode op1\n", REGNAME[destReg]);
     }
     if (this->dRegNew.rs2 == destReg) {
-      this->dRegNew.op2 = (inst==SC)?temp_out:out;
+      this->dRegNew.op2 = (inst==SCW)?temp_out:out;
       this->executeWBReg = destReg;
       this->executeWriteBack = true;
       this->history.dataHazardCount++;
@@ -1031,7 +1031,7 @@ void Simulator::excecute() {
     }
   }
 
-  if(inst == SC){
+  if(inst == SCW){
     if(!this->reservation_set.valid || !(out==this->reservation_set.addr)){
       writeMem = false;
       writeReg = true;
@@ -1046,7 +1046,7 @@ void Simulator::excecute() {
   }
   
   // register a reservation on the LR address
-  if(inst == LR){
+  if(inst == LRW){
     this->reservation_set.addr = out;
     this->reservation_set.valid = true;
   }
@@ -1200,7 +1200,7 @@ void Simulator::memoryAccess() {
     }
   }
 
-  if(inst == SC && writeMem){
+  if(inst == SCW && writeMem){
     out = 0;
   }
 

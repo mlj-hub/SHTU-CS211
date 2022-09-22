@@ -118,8 +118,8 @@ enum Inst {
   SLLW = 51,
   SRLW = 52,
   SRAW = 53,
-  LR = 54,
-  SC = 55,
+  LRW = 54,
+  SCW = 55,
   UNKNOWN = -1,
 };
 extern const char *INSTNAME[];
@@ -156,7 +156,7 @@ inline bool isJump(Inst inst) {
 
 inline bool isReadMem(Inst inst) {
   if (inst == LB || inst == LH || inst == LW || inst == LD || inst == LBU ||
-      inst == LHU || inst == LWU || inst == LR) {
+      inst == LHU || inst == LWU || inst == LRW) {
     return true;
   }
   return false;
