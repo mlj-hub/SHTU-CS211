@@ -162,6 +162,11 @@ inline bool isReadMem(Inst inst) {
   return false;
 }
 
+inline bool isStore(Inst inst){
+  if(inst == SB || inst == SH || inst == SW || inst == SD)
+    return true;
+  return false;
+}
 } // namespace RISCV
 
 class Simulator {
@@ -246,7 +251,10 @@ private:
     bool writeReg;
     RISCV::RegId destReg;
   } mReg, mRegNew;
-
+  struct {
+    uint8_t valid;
+    uint32_t addr;
+  }reservation_set;
   // Pipeline Related Variables
   // To avoid older values(in MEM) overriding newer values(in EX)
   bool executeWriteBack;

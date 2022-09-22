@@ -951,6 +951,20 @@ void Simulator::excecute() {
     out = handleSystemCall(op1, op2);
     writeReg = true;
     break;
+  case LR:
+    readMem = true;
+    writeReg = true;
+    memLen = 4;
+    out = op1 + offset;
+    readSignExt = true;
+    break;
+  case SC:
+    writeMem = true;
+    writeReg = true;
+    memLen = 4;
+    out = op1 + offset;
+    op2 = op2 & 0xFFFFFFFF;
+    break;
   default:
     this->panic("Unknown instruction type %d\n", inst);
   }
@@ -1005,6 +1019,26 @@ void Simulator::excecute() {
       if (verbose)
         printf("  Forward Data %s to Decode op2\n", REGNAME[destReg]);
     }
+  }
+
+  if(inst == SC){
+    if(!this->reservation_set.valid || !(out==this->reservation_set.addr)){
+      writeMem = false;
+      writeReg = true;
+      out = 1;
+    }
+  }
+
+  if(isStore(inst)){
+    if(this->reservation_set.addr <= out && out<= this->reservation_set.addr + memLen){
+      this->reservation_set.valid = 0;
+    }
+  }
+  
+  // register a reservation on the LR address
+  if(inst == LR){
+    this->reservation_set.addr = out;
+    this->reservation_set.valid = true;
   }
 
   this->eRegNew.bubble = false;
