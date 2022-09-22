@@ -1068,7 +1068,9 @@ void Simulator::excecute() {
   }
 
   if(isStore(inst)){
-    if(this->reservation_set.addr <= out && out<= this->reservation_set.addr + memLen){
+    if(this->reservation_set.addr <= out && out< this->reservation_set.addr + this->reservation_set.memlen && this->reservation_set.valid){
+      this->reservation_set.valid = 0;
+    } else if(out <= this->reservation_set.addr && out+memLen > this->reservation_set.addr && this->reservation_set.valid){
       this->reservation_set.valid = 0;
     }
   }
