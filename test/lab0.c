@@ -9,10 +9,20 @@
  */
 int CAS(long* dest, long new_value, long old_value) {
   int ret = 0;
-
-  // TODO: write your code here
-
-
+  asm volatile(
+    "cas: lr.w t0,(%1)\n"
+    "bne t0, %3, fail\n"
+    "sc.w t1, %2,(%1)\n"
+    "bnez t1, fail\n"
+    "li %0,1\n"
+    "j success \n"
+    "fail: li %0,0\n"
+    "success:"
+    :"=r"(ret)
+    :"r"(dest),
+    "r"(new_value),
+    "r"(old_value)
+  );
   return ret;
 }
 
