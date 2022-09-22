@@ -158,7 +158,7 @@ inline bool isJump(Inst inst) {
 
 inline bool isReadMem(Inst inst) {
   if (inst == LB || inst == LH || inst == LW || inst == LD || inst == LBU ||
-      inst == LHU || inst == LWU || inst == LRW) {
+      inst == LHU || inst == LWU || inst == LRW || inst == LRD) {
     return true;
   }
   return false;
@@ -255,7 +255,9 @@ private:
   } mReg, mRegNew;
   struct {
     uint8_t valid;
+    uint8_t insttype;  // 0 for lrw/scw and 1 for lrd/scd
     uint32_t addr;
+    uint32_t memlen;
   }reservation_set;
   // Pipeline Related Variables
   // To avoid older values(in MEM) overriding newer values(in EX)

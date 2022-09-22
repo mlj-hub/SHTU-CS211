@@ -980,6 +980,20 @@ void Simulator::excecute() {
     out = op1 + offset;
     op2 = op2 & 0xFFFFFFFF;
     break;
+  case LRD:
+    readMem = true;
+    writeReg = true;
+    memLen = 8;
+    out = op1 + offset;
+    readSignExt = true;
+    break;
+  case SCD:
+    writeMem = true;
+    writeReg = true;
+    memLen = 8;
+    out = op1 + offset;
+    op2 = op2;
+    break;
   default:
     this->panic("Unknown instruction type %d\n", inst);
   }
@@ -1018,7 +1032,14 @@ void Simulator::excecute() {
 
   int64_t temp_out=0;
   if(inst == SCW){
-    if(!this->reservation_set.valid || !(out==this->reservation_set.addr)){
+    if(!this->reservation_set.valid || !(out==this->reservation_set.addr) || this->reservation_set.insttype!=0){
+      writeMem = false;
+      writeReg = true;
+      out = 1;
+      temp_out = 1;
+    }
+  } else if(inst == SCD){
+    if(!this->reservation_set.valid || !(out==this->reservation_set.addr) || this->reservation_set.insttype!=1){
       writeMem = false;
       writeReg = true;
       out = 1;
@@ -1029,7 +1050,7 @@ void Simulator::excecute() {
   // Check for data hazard and forward data
   if (writeReg && destReg != 0 && !isReadMem(inst)) {
     if (this->dRegNew.rs1 == destReg) {
-      this->dRegNew.op1 = (inst==SCW)?temp_out:out;
+      this->dRegNew.op1 = (inst==SCW || inst == SCD)?temp_out:out;
       this->executeWBReg = destReg;
       this->executeWriteBack = true;
       this->history.dataHazardCount++;
@@ -1037,20 +1058,12 @@ void Simulator::excecute() {
         printf("  Forward Data %s to Decode op1\n", REGNAME[destReg]);
     }
     if (this->dRegNew.rs2 == destReg) {
-      this->dRegNew.op2 = (inst==SCW)?temp_out:out;
+      this->dRegNew.op2 = (inst==SCW || inst == SCD)?temp_out:out;
       this->executeWBReg = destReg;
       this->executeWriteBack = true;
       this->history.dataHazardCount++;
       if (verbose)
         printf("  Forward Data %s to Decode op2\n", REGNAME[destReg]);
-    }
-  }
-
-  if(inst == SCW){
-    if(!this->reservation_set.valid || !(out==this->reservation_set.addr)){
-      writeMem = false;
-      writeReg = true;
-      out = 1;
     }
   }
 
@@ -1064,6 +1077,13 @@ void Simulator::excecute() {
   if(inst == LRW){
     this->reservation_set.addr = out;
     this->reservation_set.valid = true;
+    this->reservation_set.insttype = 0;
+    this->reservation_set.memlen = 4;
+  } else if(inst == LRD){
+    this->reservation_set.addr = out;
+    this->reservation_set.valid = true;
+    this->reservation_set.insttype = 1;
+    this->reservation_set.memlen = 8;
   }
 
   this->eRegNew.bubble = false;
@@ -1215,7 +1235,7 @@ void Simulator::memoryAccess() {
     }
   }
 
-  if(inst == SCW && writeMem){
+  if((inst == SCW || inst == SCD) && writeMem){
     out = 0;
   }
 
