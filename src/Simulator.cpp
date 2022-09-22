@@ -1001,10 +1001,20 @@ void Simulator::excecute() {
     }
   }
 
+  int64_t temp_out=0;
+  if(inst == SC){
+    if(!this->reservation_set.valid || !(out==this->reservation_set.addr)){
+      writeMem = false;
+      writeReg = true;
+      out = 1;
+      temp_out = 1;
+    }
+  }
+
   // Check for data hazard and forward data
   if (writeReg && destReg != 0 && !isReadMem(inst)) {
     if (this->dRegNew.rs1 == destReg) {
-      this->dRegNew.op1 = out;
+      this->dRegNew.op1 = (inst==SC)?temp_out:out;
       this->executeWBReg = destReg;
       this->executeWriteBack = true;
       this->history.dataHazardCount++;
@@ -1012,7 +1022,7 @@ void Simulator::excecute() {
         printf("  Forward Data %s to Decode op1\n", REGNAME[destReg]);
     }
     if (this->dRegNew.rs2 == destReg) {
-      this->dRegNew.op2 = out;
+      this->dRegNew.op2 = (inst==SC)?temp_out:out;
       this->executeWBReg = destReg;
       this->executeWriteBack = true;
       this->history.dataHazardCount++;
