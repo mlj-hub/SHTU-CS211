@@ -1190,6 +1190,10 @@ void Simulator::memoryAccess() {
     }
   }
 
+  if(inst == SC && writeMem){
+    out = 0;
+  }
+
   this->mRegNew.bubble = false;
   this->mRegNew.stall = false;
   this->mRegNew.pc = eRegPC;
