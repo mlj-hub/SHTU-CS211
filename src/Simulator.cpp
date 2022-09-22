@@ -54,7 +54,7 @@ const char *INSTNAME[]{
     "srli", "srai",  "add",   "sub",   "sll",   "slt",  "sltu", "xor",  "srl",
     "sra",  "or",    "and",   "ecall", "addiw", "mul",  "mulh", "div",  "rem",
     "lwu",  "slliw", "srliw", "sraiw", "addw",  "subw", "sllw", "srlw", "sraw",
-    "lrw", "scw",
+    "lrw", "scw", "lrd", "scd"
 };
 
 } // namespace RISCV
@@ -633,17 +633,32 @@ void Simulator::decode() {
       reg2 = rs2;
       dest = rd;
       offset = 0;
+      uint32_t temp = (inst >> 12) & 0x7;
       switch(funct5){
         case 0x02:
-          instname = "lrw";
-          insttype = LRW;
+          if(temp == 0x2){
+            instname = "lrw";
+            insttype = LRW;
+          } else if(temp == 0x3){
+            instname = "lrd";
+            insttype = LRD;
+          } else{
+            this->panic("Unkown atomic funct3 0x%x\n",temp);
+          }
           op1str = REGNAME[rs1];
           deststr = REGNAME[rd];
           inststr = instname + " " + deststr + "," + op1str ;
           break;
         case 0x03:
-          instname = "scw";
-          insttype = SCW;
+          if(temp == 0x2){
+            instname = "scw";
+            insttype = SCW;
+          } else if(temp == 0x3){
+            instname = "scd";
+            insttype = SCD;
+          } else{
+            this->panic("Unkown atomic funct3 0x%x\n",temp);
+          }
           op1str = REGNAME[rs1];
           op2str = REGNAME[rs2];
           deststr = REGNAME[rd];

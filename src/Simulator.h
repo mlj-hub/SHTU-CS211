@@ -120,6 +120,8 @@ enum Inst {
   SRAW = 53,
   LRW = 54,
   SCW = 55,
+  LRD = 56,
+  SCD = 57,
   UNKNOWN = -1,
 };
 extern const char *INSTNAME[];
