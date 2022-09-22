@@ -156,7 +156,7 @@ inline bool isJump(Inst inst) {
 
 inline bool isReadMem(Inst inst) {
   if (inst == LB || inst == LH || inst == LW || inst == LD || inst == LBU ||
-      inst == LHU || inst == LWU) {
+      inst == LHU || inst == LWU || inst == LR) {
     return true;
   }
   return false;
