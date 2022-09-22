@@ -647,7 +647,7 @@ void Simulator::decode() {
           op1str = REGNAME[rs1];
           op2str = REGNAME[rs2];
           deststr = REGNAME[rd];
-          inststr = instname + " " + deststr + "," + op1str + "," + op2str;
+          inststr = instname + " " + deststr + "," + op2str + "," + op1str;
           break;
         default:
           this->panic("Unkown atomic funct5 0x%x\n",funct5);
