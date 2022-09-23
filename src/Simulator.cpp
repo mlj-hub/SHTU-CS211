@@ -1031,17 +1031,13 @@ void Simulator::excecute() {
   }
 
   int64_t temp_out=0;
-  if(inst == SCW){
-    if(!this->reservation_set.valid || !(out==this->reservation_set.addr) || this->reservation_set.insttype!=0){
+  uint8_t valid = this->reservation_set.valid;
+  uint32_t addr = this->reservation_set.addr;
+  uint32_t len = this->reservation_set.memlen;
+
+  if(inst == SCW || inst == SCD){
+    if( !( out>=addr && out+memLen<=addr+len && valid) ){
       writeMem = false;
-      writeReg = true;
-      out = 1;
-      temp_out = 1;
-    }
-  } else if(inst == SCD){
-    if(!this->reservation_set.valid || !(out==this->reservation_set.addr) || this->reservation_set.insttype!=1){
-      writeMem = false;
-      writeReg = true;
       out = 1;
       temp_out = 1;
     }
