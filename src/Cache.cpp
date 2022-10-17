@@ -385,6 +385,7 @@ void Cache::loadBlockFromLowerLevelE(uint32_t addr,std::vector<uint8_t>&data, ui
     return;
   }
   // If miss, load the data from the lower level
+  this->statistics.numMiss++;
   if(this->lowerCache!=nullptr){
     // If the lower cache exists, load it
     this->lowerCache->loadBlockFromLowerLevelE(addr,data,cycles);
@@ -399,6 +400,8 @@ void Cache::loadBlockFromLowerLevelE(uint32_t addr,std::vector<uint8_t>&data, ui
 /* This function will write a cache block back into a lower level. If the lower cache set is full, it will recersively write the
 cache line back to a lower level */
 void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t addr){
+  this->statistics.numWrite++;
+  this->statistics.numMiss++;
   if (this->lowerCache == nullptr) {
     for (uint32_t i = 0; i < this->policy.blockSize; ++i) {
       this->memory->setByteNoCache(addr + i, data[i]);
