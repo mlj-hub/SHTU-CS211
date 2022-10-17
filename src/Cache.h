@@ -74,8 +74,10 @@ private:
 
   void initCache();
   void loadBlockFromLowerLevel(uint32_t addr, uint32_t *cycles = nullptr);
+  void loadBlockFromLowerLevelE(uint32_t  addr, std::vector<uint8_t>&data, uint32_t* cycle=nullptr);
   uint32_t getReplacementBlockId(uint32_t begin, uint32_t end);
   void writeBlockToLowerLevel(Block &b);
+  void writeBlockToLowerLevelE(const std::vector<uint8_t>&data, uint32_t addr);
 
   // Utility Functions
   bool isPolicyValid();

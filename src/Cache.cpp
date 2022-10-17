@@ -69,9 +69,37 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
   // Else, find the data in memory or other level of cache
   this->statistics.numMiss++;
   this->statistics.totalCycles += this->policy.missLatency;
-  this->loadBlockFromLowerLevel(addr, cycles);
 
-  // The block is in top level cache now, return directly
+  // Load cache line data from lower level
+  std::vector<uint8_t> data(this->policy.blockSize);
+  this->lowerCache->loadBlockFromLowerLevelE(addr&(0xffffffff<<log2i(this->policy.blockSize)),data,cycles);
+
+  // create a new cache line 
+  uint32_t blockSize = this->policy.blockSize;
+  Block b;
+  b.valid = true;
+  b.modified = false;
+  b.tag = this->getTag(addr);
+  b.id = this->getId(addr);
+  b.size = blockSize;
+  // update its data
+  b.data = data;
+
+  // Find replace block
+  uint32_t id = this->getId(addr);
+  uint32_t blockIdBegin = id * this->policy.associativity;
+  uint32_t blockIdEnd = (id + 1) * this->policy.associativity;
+  uint32_t replaceId = this->getReplacementBlockId(blockIdBegin, blockIdEnd);
+  Block replaceBlock = this->blocks[replaceId];
+  if (replaceBlock.valid) { 
+    // write back to lowe level memory
+    this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock));
+    this->statistics.totalCycles += this->policy.missLatency;
+  }
+
+  this->blocks[replaceId] = b;
+
+  // The block is in L1 cache now, return directly
   if ((blockId = this->getBlockId(addr)) != -1) {
     uint32_t offset = this->getOffset(addr);
     this->blocks[blockId].lastReference = this->referenceCounter;
@@ -96,7 +124,7 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
     this->blocks[blockId].lastReference = this->referenceCounter;
     this->blocks[blockId].data[offset] = val;
     if (!this->writeBack) {
-      this->writeBlockToLowerLevel(this->blocks[blockId]);
+      this->memory->setByteNoCache(addr, val);
       this->statistics.totalCycles += this->policy.missLatency;
     }
     if (cycles) *cycles = this->policy.hitLatency;
@@ -108,26 +136,49 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
   this->statistics.numMiss++;
   this->statistics.totalCycles += this->policy.missLatency;
 
-  if (this->writeAllocate) {
-    this->loadBlockFromLowerLevel(addr, cycles);
+  
+  // Load cache line data from lower level
+  std::vector<uint8_t> data(this->policy.blockSize);
+  this->lowerCache->loadBlockFromLowerLevelE(addr&(0xffffffff<<log2i(this->policy.blockSize)),data,cycles);
 
-    if ((blockId = this->getBlockId(addr)) != -1) {
-      uint32_t offset = this->getOffset(addr);
-      this->blocks[blockId].modified = true;
-      this->blocks[blockId].lastReference = this->referenceCounter;
-      this->blocks[blockId].data[offset] = val;
-      return;
-    } else {
-      fprintf(stderr, "Error: data not in top level cache!\n");
-      exit(-1);
-    }
-  } else {
-    if (this->lowerCache == nullptr) {
-      this->memory->setByteNoCache(addr, val);
-    } else {
-      this->lowerCache->setByte(addr, val);
-    }
+  // create a new cache line 
+  uint32_t blockSize = this->policy.blockSize;
+  Block b;
+  b.valid = true;
+  b.modified = false;
+  b.tag = this->getTag(addr);
+  b.id = this->getId(addr);
+  b.size = blockSize;
+  // update its data
+  b.data = data;
+
+  // Find replace block
+  uint32_t id = this->getId(addr);
+  uint32_t blockIdBegin = id * this->policy.associativity;
+  uint32_t blockIdEnd = (id + 1) * this->policy.associativity;
+  uint32_t replaceId = this->getReplacementBlockId(blockIdBegin, blockIdEnd);
+  Block replaceBlock = this->blocks[replaceId];
+  if (replaceBlock.valid) { 
+    // write back to lowe level memory
+    this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock));
+    this->statistics.totalCycles += this->policy.missLatency;
   }
+
+  this->blocks[replaceId] = b;
+
+  if ((blockId = this->getBlockId(addr)) != -1) {
+    uint32_t offset = this->getOffset(addr);
+    this->blocks[blockId].modified = true;
+    this->blocks[blockId].lastReference = this->referenceCounter;
+    this->blocks[blockId].data[offset] = val;
+    return;
+  } else {
+    fprintf(stderr, "Error: data not in top level cache!\n");
+    exit(-1);
+  }
+
+  if (!this->writeBack) 
+      this->memory->setByteNoCache(addr, val);
 }
 
 void Cache::printInfo(bool verbose) {
@@ -312,4 +363,71 @@ uint32_t Cache::getAddr(Cache::Block &b) {
   uint32_t offsetBits = log2i(policy.blockSize);
   uint32_t idBits = log2i(policy.blockNum / policy.associativity);
   return (b.tag << (offsetBits + idBits)) | (b.id << offsetBits);
+}
+
+/* This function will load the block value from addr and put it into data. If there occurs a cache miss, load it
+from lower level. */
+void Cache::loadBlockFromLowerLevelE(uint32_t addr,std::vector<uint8_t>&data, uint32_t * cycles){
+  this->referenceCounter++;
+  this->statistics.numRead++;
+
+  // If in cache, return data of block directly
+  int blockId;
+  if ((blockId = this->getBlockId(addr)) != -1) {
+    uint32_t offset = this->getOffset(addr);
+    this->statistics.numHit++;
+    this->statistics.totalCycles += this->policy.hitLatency;
+    this->blocks[blockId].lastReference = this->referenceCounter;
+    if (cycles) *cycles = this->policy.hitLatency;
+    // return the data of the accessed block
+    data = this->blocks[blockId].data;
+    this->blocks[blockId].valid = 0;
+    return;
+  }
+  // If miss, load the data from the lower level
+  if(this->lowerCache!=nullptr){
+    // If the lower cache exists, load it
+    this->lowerCache->loadBlockFromLowerLevelE(addr,data,cycles);
+  }
+  else{
+    // else, read data from memory
+    for (int i=0;i<this->policy.blockSize;i++)
+      data[i]=this->memory->getByteNoCache(addr+i);
+  }
+}
+
+/* This function will write a cache block back into a lower level. If the lower cache set is full, it will recersively write the
+cache line back to a lower level */
+void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t addr){
+  if (this->lowerCache == nullptr) {
+    for (uint32_t i = 0; i < this->policy.blockSize; ++i) {
+      this->memory->setByteNoCache(addr + i, data[i]);
+    }
+  } else {
+
+    // create a new cache line 
+    uint32_t blockSize = this->policy.blockSize;
+    Block b;
+    b.valid = true;
+    b.modified = false;
+    b.tag = this->getTag(addr);
+    b.id = this->getId(addr);
+    b.size = blockSize;
+    // update its data
+    b.data = data;
+    
+    // Find replace block
+    uint32_t id = this->getId(addr);
+    uint32_t blockIdBegin = id * this->policy.associativity;
+    uint32_t blockIdEnd = (id + 1) * this->policy.associativity;
+    uint32_t replaceId = this->getReplacementBlockId(blockIdBegin, blockIdEnd);
+    Block replaceBlock = this->blocks[replaceId];
+    if (replaceBlock.valid) { 
+      // write back to memory
+      this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock));
+      this->statistics.totalCycles += this->policy.missLatency;
+    }
+
+    this->blocks[replaceId] = b;
+  }
 }
