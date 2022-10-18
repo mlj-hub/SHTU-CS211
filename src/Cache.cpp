@@ -63,7 +63,7 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
   int blockId;
   if ((blockId = this->getBlockId(addr)) != -1) {
     if(this->level == 3&& blockId % 512==0){
-      this->sampler.updateTrace(blockId/512,this->getTag(addr)&(0x7fff));
+      this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
     }
     uint32_t offset = this->getOffset(addr);
     this->statistics.numHit++;
@@ -81,7 +81,7 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
   // The block is in top level cache now, return directly
   if ((blockId = this->getBlockId(addr)) != -1) {
     if(this->level == 3&& blockId % 512==0){
-      this->sampler.updateTrace(blockId/512,this->getTag(addr)&(0x7fff));
+      this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
     }
     uint32_t offset = this->getOffset(addr);
     this->blocks[blockId].lastReference = this->referenceCounter;
@@ -100,7 +100,7 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
   int blockId;
   if ((blockId = this->getBlockId(addr)) != -1) {
     if(this->level == 3&& blockId % 512==0){
-      this->sampler.updateTrace(blockId/512,this->getTag(addr)&(0x7fff));
+      this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
     }
     uint32_t offset = this->getOffset(addr);
     this->statistics.numHit++;
@@ -126,7 +126,7 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
 
     if ((blockId = this->getBlockId(addr)) != -1) {
       if(this->level == 3&& blockId % 512==0){
-        this->sampler.updateTrace(blockId/512,this->getTag(addr)&(0x7fff));
+        this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
       }
       uint32_t offset = this->getOffset(addr);
       this->blocks[blockId].modified = true;
@@ -248,6 +248,9 @@ void Cache::loadBlockFromLowerLevel(uint32_t addr, uint32_t *cycles) {
   uint32_t blockIdEnd = (id + 1) * this->policy.associativity;
   uint32_t replaceId = this->getReplacementBlockId(blockIdBegin, blockIdEnd);
   Block replaceBlock = this->blocks[replaceId];
+  if(replaceBlock.valid && this->level == 3 && replaceBlock.id % 512==0){
+    this->sampler.updatePredictorWhenReplace(replaceBlock.id/512,replaceBlock.tag&0x7fff);
+  }
   if (this->writeBack && replaceBlock.valid &&
       replaceBlock.modified) { // write back to memory
     this->writeBlockToLowerLevel(replaceBlock);
@@ -331,9 +334,11 @@ uint32_t Cache::getAddr(Cache::Block &b) {
 }
 
 /* Update the sampler when a cache  */
-void Cache::Sampler::updateTrace(uint32_t setId,uint32_t tag){
+void Cache::Sampler::updateTraceWhenAccess(uint32_t setId,uint32_t tag){
   this->referenceCycle++;
   uint32_t blockId;
+  tag &=0x7fff; // tag only have 15 bits
+  // if it is in the set
   for(uint32_t i=setId;i<(setId+1)*this->associativity;i++){
     if(this->entries[i].tag == tag && this->entries[i].valid){
       this->entries[i].trace = (this->entries[i].trace+memPC)&(0x7fff);
@@ -341,6 +346,7 @@ void Cache::Sampler::updateTrace(uint32_t setId,uint32_t tag){
       return;
     }
   }
+  // if there is a invalid line
   for(uint32_t i=setId;i<(setId+1)*this->associativity;i++){
     if(this->entries[i].valid!=1){
       this->entries[i].valid=1;
@@ -350,6 +356,7 @@ void Cache::Sampler::updateTrace(uint32_t setId,uint32_t tag){
       return;
     }
   }
+  // find LRU
   uint32_t min = this->entries[setId].lastReference;
   uint32_t resultId = setId;
   for(uint32_t i=setId;i<(setId+1)*this->associativity;i++){
@@ -361,4 +368,38 @@ void Cache::Sampler::updateTrace(uint32_t setId,uint32_t tag){
   this->entries[resultId].trace = memPC&(0x7fff);
   this->entries[resultId].tag = tag&(0x7fff);
   return;
+}
+
+/* Update predictor when replacement happens */
+void Cache::Sampler::updatePredictorWhenReplace(uint32_t setId,uint32_t tag){
+  uint32_t blockId;
+  for(uint32_t i=setId;i<(setId+1)*this->associativity;i++){
+    if(this->entries[i].tag == tag && this->entries[i].valid){
+      uint32_t idx1 = this->hash1(this->entries[i].trace,tag)%4096;
+      uint32_t idx2 = this->hash2(this->entries[i].trace,tag)%4096;
+      uint32_t idx3 = this->hash3(this->entries[i].trace,tag)%4096;
+      //update three tables
+      this->predictor.updateCounter(idx1,idx2,idx3);
+      this->entries[i].valid = 0;
+      return;
+    }
+  }
+}
+
+uint32_t Cache::Sampler::hash1(uint32_t trace,uint32_t tag){
+  return ((trace&0x7fff)^(tag&0x7fff))%4096;
+}
+
+uint32_t Cache::Sampler::hash2(uint32_t trace,uint32_t tag){
+  return ((trace&0x7fff)+(tag&0x7fff))%4096;
+}
+
+uint32_t Cache::Sampler::hash3(uint32_t trace,uint32_t tag){
+  return ((trace&0x7fff)&(tag&0x7fff))%4096;
+}
+
+void Cache::Sampler::Predictor::updateCounter(uint32_t idx1,uint32_t idx2,uint32_t idx3){
+  if(this->counter1[idx1] < 3) counter1[idx1]++;
+  if(this->counter2[idx2] < 3) counter2[idx2]++;
+  if(this->counter3[idx3] < 3) counter3[idx3]++;
 }

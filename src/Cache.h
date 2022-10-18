@@ -60,16 +60,25 @@ public:
       uint32_t lastReference;
       SamplerEntry(){};
     };
-    void updateTrace(uint32_t setId,uint32_t tag);
+    struct Predictor{
+      std::vector<uint8_t> counter1 = std::vector<uint8_t> (4096);
+      std::vector<uint8_t> counter2 = std::vector<uint8_t> (4096);
+      std::vector<uint8_t> counter3 = std::vector<uint8_t> (4096);
+      void updateCounter(uint32_t idx1,uint32_t idx2,uint32_t idx3);
+    };
+    uint32_t hash1(uint32_t trace,uint32_t tag);
+    uint32_t hash2(uint32_t trace,uint32_t tag);
+    uint32_t hash3(uint32_t trace,uint32_t tag);
+    void updateTraceWhenAccess(uint32_t setId,uint32_t tag);
+    void updatePredictorWhenReplace(uint32_t setId,uint32_t tag);
     uint32_t setNum=32;
     uint32_t associativity = 12;
     uint32_t referenceCycle=0;
     std::vector<SamplerEntry> entries = std::vector<SamplerEntry>(32*12);
+    Predictor predictor;
   };
 
-  struct Predictor{
-    std::vector<uint8_t> counters = std::vector<uint8_t> (4096);
-  };
+
 
   Cache(MemoryManager *manager, Policy policy, Cache *lowerCache = nullptr,uint8_t level=1,
         bool writeBack = true, bool writeAllocate = true);
