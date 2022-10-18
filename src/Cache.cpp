@@ -29,9 +29,6 @@ Cache::Cache(MemoryManager *manager, Policy policy, Cache *lowerCache,uint8_t le
   this->writeBack = writeBack;
   this->writeAllocate = writeAllocate;
   this->level = level;
-  this->predictors[0].resize(4096);
-  this->predictors[1].resize(4096);
-  this->predictors[2].resize(4096);
 }
 
 bool Cache::inCache(uint32_t addr) {
@@ -430,7 +427,7 @@ uint8_t Cache::Sampler::prediction(uint32_t pc,uint32_t tag){
   uint32_t idx1 = this->hash1(pc&0x7fff,tag&0x7fff)%4096;
   uint32_t idx2 = this->hash2(pc&0x7fff,tag&0x7fff)%4096;
   uint32_t idx3 = this->hash3(pc&0x7fff,tag&0x7fff)%4096;
-  uint8_t confidence = this->predictor.counter1[idx1]+this->predictor.counter1[idx2]+this->predictor.counter1[idx3];
+  uint8_t confidence = this->predictor.counter1[idx1]+this->predictor.counter2[idx2]+this->predictor.counter3[idx3];
   if (confidence>=8){
     return 1;
   }

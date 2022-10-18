@@ -35,7 +35,7 @@ public:
     uint32_t size;
     uint32_t lastReference;
     std::vector<uint8_t> data;
-    Block() {}
+    Block() {dead = 0;}
     Block(const Block &b)
         : valid(b.valid), modified(b.modified), tag(b.tag), id(b.id),
           size(b.size) {
@@ -55,10 +55,14 @@ public:
     struct SamplerEntry{
       uint32_t trace;
       uint32_t tag;
-      uint8_t prediction;
       uint8_t valid;
       uint32_t lastReference;
-      SamplerEntry(){};
+      SamplerEntry(){
+        trace = 0;
+        tag = 0;
+        valid = 0;
+        lastReference = 0;
+      };
     };
     struct Predictor{
       std::vector<uint8_t> counter1 = std::vector<uint8_t> (4096);
@@ -103,7 +107,6 @@ private:
   Policy policy;
   std::vector<Block> blocks;
   uint8_t level;
-  std::vector<std::vector<uint8_t>> predictors = std::vector<std::vector<uint8_t>>(3);
   Sampler sampler;
 
   void initCache();
