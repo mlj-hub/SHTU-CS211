@@ -79,6 +79,7 @@ public:
     uint32_t setNum=32;
     uint32_t associativity = 12;
     uint32_t referenceCycle=0;
+    uint32_t divide;
     std::vector<SamplerEntry> entries = std::vector<SamplerEntry>(32*12);
     Predictor predictor;
   };

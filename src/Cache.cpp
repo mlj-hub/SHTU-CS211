@@ -29,6 +29,7 @@ Cache::Cache(MemoryManager *manager, Policy policy, Cache *lowerCache,uint8_t le
   this->writeBack = writeBack;
   this->writeAllocate = writeAllocate;
   this->level = level;
+  this->sampler.divide = (this->policy.blockNum/this->policy.associativity)/this->sampler.setNum;
 }
 
 bool Cache::inCache(uint32_t addr) {
@@ -60,8 +61,8 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
   // If in cache, return directly
   int blockId;
   if ((blockId = this->getBlockId(addr)) != -1) {
-    if(this->level == 3&& blockId % 512==0){
-      this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+    if(this->level == 3&& blockId % this->sampler.divide==0){
+      this->sampler.updateTraceWhenAccess(blockId/this->sampler.divide,this->getTag(addr)&(0x7fff));
     }
     if(this->level == 3){
       uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
@@ -82,8 +83,8 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
 
   // The block is in top level cache now, return directly
   if ((blockId = this->getBlockId(addr)) != -1) {
-    if(this->level == 3&& blockId % 512==0){
-      this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+    if(this->level == 3&& blockId % this->sampler.divide==0){
+      this->sampler.updateTraceWhenAccess(blockId/this->sampler.divide,this->getTag(addr)&(0x7fff));
     }
     if(this->level == 3){
       uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
@@ -105,8 +106,8 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
   // If in cache, write to it directly
   int blockId;
   if ((blockId = this->getBlockId(addr)) != -1) {
-    if(this->level == 3&& blockId % 512==0){
-      this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+    if(this->level == 3&& blockId % this->sampler.divide==0){
+      this->sampler.updateTraceWhenAccess(blockId/this->sampler.divide,this->getTag(addr)&(0x7fff));
     }
     if(this->level == 3){
       uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
@@ -135,8 +136,8 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
     this->loadBlockFromLowerLevel(addr, cycles);
 
     if ((blockId = this->getBlockId(addr)) != -1) {
-      if(this->level == 3&& blockId % 512==0){
-        this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+      if(this->level == 3&& blockId % this->sampler.divide==0){
+        this->sampler.updateTraceWhenAccess(blockId/this->sampler.divide,this->getTag(addr)&(0x7fff));
       }
       if(this->level == 3){
         uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
@@ -262,8 +263,8 @@ void Cache::loadBlockFromLowerLevel(uint32_t addr, uint32_t *cycles) {
   uint32_t blockIdEnd = (id + 1) * this->policy.associativity;
   uint32_t replaceId = this->getReplacementBlockId(blockIdBegin, blockIdEnd);
   Block replaceBlock = this->blocks[replaceId];
-  if(replaceBlock.valid && this->level == 3 && replaceBlock.id % 512==0){
-    this->sampler.updatePredictorWhenReplace(replaceBlock.id/512,replaceBlock.tag&0x7fff);
+  if(replaceBlock.valid && this->level == 3 && replaceBlock.id % this->sampler.divide==0){
+    this->sampler.updatePredictorWhenReplace(replaceBlock.id/this->sampler.divide,replaceBlock.tag&0x7fff);
   }
   if (this->writeBack && replaceBlock.valid &&
       replaceBlock.modified) { // write back to memory
