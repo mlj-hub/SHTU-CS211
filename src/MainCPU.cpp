@@ -63,9 +63,9 @@ int main(int argc, char **argv) {
   l3Policy.hitLatency = 20;
   l3Policy.missLatency = 100;
 
-  l3Cache = new Cache(&memory, l3Policy);
-  l2Cache = new Cache(&memory, l2Policy, l3Cache);
-  l1Cache = new Cache(&memory, l1Policy, l2Cache);
+  l3Cache = new Cache(&memory, l3Policy,nullptr,3);
+  l2Cache = new Cache(&memory, l2Policy, l3Cache,2);
+  l1Cache = new Cache(&memory, l1Policy, l2Cache,1);
 
   memory.setCache(l1Cache);
 

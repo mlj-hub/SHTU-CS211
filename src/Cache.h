@@ -28,6 +28,7 @@ public:
 
   struct Block {
     bool valid;
+    bool dead;
     bool modified;
     uint32_t tag;
     uint32_t id;
@@ -50,7 +51,27 @@ public:
     uint64_t totalCycles;
   };
 
-  Cache(MemoryManager *manager, Policy policy, Cache *lowerCache = nullptr,
+  struct Sampler{
+    struct SamplerEntry{
+      uint32_t trace;
+      uint32_t tag;
+      uint8_t prediction;
+      uint8_t valid;
+      uint32_t lastReference;
+      SamplerEntry(){};
+    };
+    void updateTrace(uint32_t setId,uint32_t tag);
+    uint32_t setNum=32;
+    uint32_t associativity = 12;
+    uint32_t referenceCycle=0;
+    std::vector<SamplerEntry> entries = std::vector<SamplerEntry>(32*12);
+  };
+
+  struct Predictor{
+    std::vector<uint8_t> counters = std::vector<uint8_t> (4096);
+  };
+
+  Cache(MemoryManager *manager, Policy policy, Cache *lowerCache = nullptr,uint8_t level=1,
         bool writeBack = true, bool writeAllocate = true);
 
   bool inCache(uint32_t addr);
@@ -71,6 +92,9 @@ private:
   Cache *lowerCache;
   Policy policy;
   std::vector<Block> blocks;
+  uint8_t level;
+  std::vector<std::vector<uint8_t>> predictors = std::vector<std::vector<uint8_t>>(3);
+  Sampler sampler;
 
   void initCache();
   void loadBlockFromLowerLevel(uint32_t addr, uint32_t *cycles = nullptr);

@@ -9,7 +9,7 @@
 
 #include "Debug.h"
 #include "Simulator.h"
-
+uint32_t memPC;
 namespace RISCV {
 
 const char *REGNAME[32] = {
@@ -1135,6 +1135,7 @@ void Simulator::memoryAccess() {
   uint32_t cycles = 0;
 
   if (writeMem) {
+    memPC = eRegPC;
     switch (memLen) {
     case 1:
       good = this->memory->setByte(out, op2, &cycles);
@@ -1158,6 +1159,7 @@ void Simulator::memoryAccess() {
   }
 
   if (readMem) {
+    memPC = eRegPC;
     switch (memLen) {
     case 1:
       if (readSignExt) {
