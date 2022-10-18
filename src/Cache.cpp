@@ -402,6 +402,19 @@ cache line back to a lower level */
 void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t addr){
   this->statistics.numWrite++;
   this->statistics.numMiss++;
+  this->referenceCounter++;
+
+  int blockId;
+  if ((blockId = this->getBlockId(addr)) != -1) {
+    if(this->lowerCache!=nullptr && this->lowerCache->getBlockId(addr)!=-1){
+      printf("=================error===================\n");
+      exit(-1);
+    }
+    printf("=================error===================\n");
+    exit(-1);
+    return;
+  }
+
   if (this->lowerCache == nullptr) {
     for (uint32_t i = 0; i < this->policy.blockSize; ++i) {
       this->memory->setByteNoCache(addr + i, data[i]);
@@ -412,12 +425,13 @@ void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t a
     uint32_t blockSize = this->policy.blockSize;
     Block b;
     b.valid = true;
-    b.modified = false;
+    b.modified = true;
     b.tag = this->getTag(addr);
     b.id = this->getId(addr);
     b.size = blockSize;
     // update its data
     b.data = data;
+    b.lastReference = this->referenceCounter;
     
     // Find replace block
     uint32_t id = this->getId(addr);
