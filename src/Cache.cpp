@@ -9,6 +9,7 @@
 
 #include "Cache.h"
 extern uint32_t memPC;
+
 Cache::Cache(MemoryManager *manager, Policy policy, Cache *lowerCache,uint8_t level,
              bool writeBack, bool writeAllocate) {
   this->referenceCounter = 0;
@@ -65,6 +66,10 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
     if(this->level == 3&& blockId % 512==0){
       this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
     }
+    if(this->level == 3){
+      uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
+      this->blocks[blockId].dead = dead;
+    }
     uint32_t offset = this->getOffset(addr);
     this->statistics.numHit++;
     this->statistics.totalCycles += this->policy.hitLatency;
@@ -82,6 +87,10 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
   if ((blockId = this->getBlockId(addr)) != -1) {
     if(this->level == 3&& blockId % 512==0){
       this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+    }
+    if(this->level == 3){
+      uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
+      this->blocks[blockId].dead = dead;
     }
     uint32_t offset = this->getOffset(addr);
     this->blocks[blockId].lastReference = this->referenceCounter;
@@ -101,6 +110,10 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
   if ((blockId = this->getBlockId(addr)) != -1) {
     if(this->level == 3&& blockId % 512==0){
       this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+    }
+    if(this->level == 3){
+      uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
+      this->blocks[blockId].dead = dead;
     }
     uint32_t offset = this->getOffset(addr);
     this->statistics.numHit++;
@@ -127,6 +140,10 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
     if ((blockId = this->getBlockId(addr)) != -1) {
       if(this->level == 3&& blockId % 512==0){
         this->sampler.updateTraceWhenAccess(blockId/512,this->getTag(addr)&(0x7fff));
+      }
+      if(this->level == 3){
+        uint8_t dead = this->sampler.prediction(memPC&0x7fff,this->blocks[blockId].tag&0x7fff);
+        this->blocks[blockId].dead = dead;
       }
       uint32_t offset = this->getOffset(addr);
       this->blocks[blockId].modified = true;
@@ -261,6 +278,11 @@ void Cache::loadBlockFromLowerLevel(uint32_t addr, uint32_t *cycles) {
 }
 
 uint32_t Cache::getReplacementBlockId(uint32_t begin, uint32_t end) {
+  //Find dead 
+  for (uint32_t i = begin; i < end; ++i) {
+    if (this->blocks[i].dead)
+      return i;
+  }
   // Find invalid block first
   for (uint32_t i = begin; i < end; ++i) {
     if (!this->blocks[i].valid)
@@ -402,4 +424,15 @@ void Cache::Sampler::Predictor::updateCounter(uint32_t idx1,uint32_t idx2,uint32
   if(this->counter1[idx1] < 3) counter1[idx1]++;
   if(this->counter2[idx2] < 3) counter2[idx2]++;
   if(this->counter3[idx3] < 3) counter3[idx3]++;
+}
+
+uint8_t Cache::Sampler::prediction(uint32_t pc,uint32_t tag){
+  uint32_t idx1 = this->hash1(pc&0x7fff,tag&0x7fff)%4096;
+  uint32_t idx2 = this->hash2(pc&0x7fff,tag&0x7fff)%4096;
+  uint32_t idx3 = this->hash3(pc&0x7fff,tag&0x7fff)%4096;
+  uint8_t confidence = this->predictor.counter1[idx1]+this->predictor.counter1[idx2]+this->predictor.counter1[idx3];
+  if (confidence>=8){
+    return 1;
+  }
+  return 0;
 }

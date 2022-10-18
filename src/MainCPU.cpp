@@ -94,6 +94,7 @@ int main(int argc, char **argv) {
   simulator.initStack(stackBaseAddr, stackSize);
   simulator.simulate();
 
+  simulator.memory->printStatistics();
   if (dumpHistory) {
     printf("Dumping history to dump.txt...\n");
     simulator.dumpHistory();

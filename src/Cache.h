@@ -71,6 +71,7 @@ public:
     uint32_t hash3(uint32_t trace,uint32_t tag);
     void updateTraceWhenAccess(uint32_t setId,uint32_t tag);
     void updatePredictorWhenReplace(uint32_t setId,uint32_t tag);
+    uint8_t prediction(uint32_t pc,uint32_t tag);
     uint32_t setNum=32;
     uint32_t associativity = 12;
     uint32_t referenceCycle=0;

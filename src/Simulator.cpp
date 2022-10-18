@@ -1341,6 +1341,7 @@ int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
       this->dumpHistory();
     }
     this->printStatistics();
+    this->memory->printStatistics();
     exit(0);
   case 4: // read char
     scanf(" %c", (char*)&op1);
