@@ -93,7 +93,7 @@ uint8_t Cache::getByte(uint32_t addr, uint32_t *cycles) {
   Block replaceBlock = this->blocks[replaceId];
   if (replaceBlock.valid) { 
     // write back to lowe level memory
-    this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock));
+    this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock),cycles);
     this->statistics.totalCycles += this->policy.missLatency;
   }
 
@@ -160,7 +160,7 @@ void Cache::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
   Block replaceBlock = this->blocks[replaceId];
   if (replaceBlock.valid) { 
     // write back to lowe level memory
-    this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock));
+    this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock),cycles);
     this->statistics.totalCycles += this->policy.missLatency;
   }
 
@@ -386,6 +386,7 @@ void Cache::loadBlockFromLowerLevelE(uint32_t addr,std::vector<uint8_t>&data, ui
   }
   // If miss, load the data from the lower level
   this->statistics.numMiss++;
+  this->statistics.totalCycles+=this->policy.missLatency;
   if(this->lowerCache!=nullptr){
     // If the lower cache exists, load it
     this->lowerCache->loadBlockFromLowerLevelE(addr,data,cycles);
@@ -394,12 +395,13 @@ void Cache::loadBlockFromLowerLevelE(uint32_t addr,std::vector<uint8_t>&data, ui
     // else, read data from memory
     for (int i=0;i<this->policy.blockSize;i++)
       data[i]=this->memory->getByteNoCache(addr+i);
+    if(cycles) *cycles = 100;
   }
 }
 
 /* This function will write a cache block back into a lower level. If the lower cache set is full, it will recersively write the
 cache line back to a lower level */
-void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t addr){
+void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t addr,uint32_t *cycles){
   this->statistics.numWrite++;
   this->statistics.numMiss++;
   this->referenceCounter++;
@@ -419,6 +421,8 @@ void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t a
     for (uint32_t i = 0; i < this->policy.blockSize; ++i) {
       this->memory->setByteNoCache(addr + i, data[i]);
     }
+    this->statistics.totalCycles+=this->policy.missLatency;
+    if(cycles) *cycles=this->policy.missLatency;
   } else {
 
     // create a new cache line 
@@ -441,7 +445,7 @@ void Cache::writeBlockToLowerLevelE(const std::vector<uint8_t> & data,uint32_t a
     Block replaceBlock = this->blocks[replaceId];
     if (replaceBlock.valid) { 
       // write back to memory
-      this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock));
+      this->lowerCache->writeBlockToLowerLevelE(replaceBlock.data,this->getAddr(replaceBlock),cycles);
       this->statistics.totalCycles += this->policy.missLatency;
     }
 
