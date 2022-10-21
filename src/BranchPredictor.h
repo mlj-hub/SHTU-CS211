@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <deque>
 
 const int PRED_BUF_SIZE = 4096;
 
@@ -36,16 +37,22 @@ public:
       this->numPerceptrons = numPerceptrons;
       this->numWeight = numWeight;
       this->threshold = threshold;
+      this->curOutcome = 0;
+      this->lastOutome = 0;
       // init percetable
       this->perceTable.resize(numPerceptrons);
       // init each perceptrons
       for(uint32_t i=0;i<this->numPerceptrons;i++)
         this->perceTable[i].resize(numWeight);
     }
-    void trainning();
+    // hash function used to index perceptron table
+    uint32_t hash(uint32_t pc);
+    bool sign(int32_t lastOutcome);
     uint32_t numPerceptrons;
     uint32_t numWeight;
     int32_t threshold;
+    int32_t curOutcome;
+    int32_t lastOutome;
     // percetrons table
     std::vector<std::vector<int32_t>> perceTable;
   };
@@ -67,8 +74,8 @@ private:
     STRONG_NOT_TAKEN = 3, WEAK_NOT_TAKEN = 2,
   } predbuf[PRED_BUF_SIZE]; // initial state: WEAK_TAKEN
   // history table to record the result of the last k branch
-  std::vector<int8_t> historyTable;
-  int32_t historySize;
+  std::deque<int8_t> historyTable;
+  int32_t numHistory;
   Perceptron perceptron;
 };
 

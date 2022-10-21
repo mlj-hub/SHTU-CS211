@@ -12,7 +12,7 @@ perceptron(numHistory+1,numPerce,threshold) {
   }
   // build the history table 
   this->historyTable.resize(numHistory);
-  this->historySize = numHistory;
+  this->numHistory = numHistory;
 }
 
 BranchPredictor::~BranchPredictor() {}
@@ -43,6 +43,25 @@ bool BranchPredictor::predict(uint32_t pc, uint32_t insttype, int64_t op1,
     }   
   }
   break;
+  case PERCEPTRON:{
+    // update lastOutcome for tranning 
+    this->perceptron.lastOutome = this->perceptron.curOutcome;
+    int32_t outcome = 0;
+    // get index 
+    uint32_t idx = this->perceptron.hash(pc);
+    // get weight vector
+    std::vector<int32_t> weight = this->perceptron.perceTable[idx];
+    // add bias
+    outcome += weight[0];
+    for(int i =0;i < this->numHistory;i++){
+      outcome+=weight[i+1]*this->historyTable[i];
+    }
+    this->perceptron.curOutcome = outcome;
+    if(outcome>=0)
+      return true;
+    else
+      return false;
+  }
   default:
     dbgprintf("Unknown Branch Perdiction Strategy!\n");
     break;
@@ -51,25 +70,50 @@ bool BranchPredictor::predict(uint32_t pc, uint32_t insttype, int64_t op1,
 }
 
 void BranchPredictor::update(uint32_t pc, bool branch) {
-  int id = pc % PRED_BUF_SIZE;
-  PredictorState state = this->predbuf[id];
-  if (branch) {
-    if (state == STRONG_NOT_TAKEN) {
-      this->predbuf[id] = WEAK_NOT_TAKEN;
-    } else if (state == WEAK_NOT_TAKEN) {
-      this->predbuf[id] = WEAK_TAKEN;
-    } else if (state == WEAK_TAKEN) {
-      this->predbuf[id] = STRONG_TAKEN;
-    } // do nothing if STRONG_TAKEN
-  } else { // not branch
-    if (state == STRONG_TAKEN) {
-      this->predbuf[id] = WEAK_TAKEN;
-    } else if (state == WEAK_TAKEN) {
-      this->predbuf[id] = WEAK_NOT_TAKEN;
-    } else if (state == WEAK_NOT_TAKEN) {
-      this->predbuf[id] = STRONG_NOT_TAKEN;
-    } // do noting if STRONG_NOT_TAKEN
+  switch(this->strategy){
+    case BPB:{
+      int id = pc % PRED_BUF_SIZE;
+      PredictorState state = this->predbuf[id];
+      if (branch) {
+        if (state == STRONG_NOT_TAKEN) {
+          this->predbuf[id] = WEAK_NOT_TAKEN;
+        } else if (state == WEAK_NOT_TAKEN) {
+          this->predbuf[id] = WEAK_TAKEN;
+        } else if (state == WEAK_TAKEN) {
+          this->predbuf[id] = STRONG_TAKEN;
+        } // do nothing if STRONG_TAKEN
+      } else { // not branch
+        if (state == STRONG_TAKEN) {
+          this->predbuf[id] = WEAK_TAKEN;
+        } else if (state == WEAK_TAKEN) {
+          this->predbuf[id] = WEAK_NOT_TAKEN;
+        } else if (state == WEAK_NOT_TAKEN) {
+          this->predbuf[id] = STRONG_NOT_TAKEN;
+        } // do noting if STRONG_NOT_TAKEN
+      }
+      break;
+    }
+    case PERCEPTRON:{
+      // get history according to the outcome
+      int8_t t = branch?1:-1;
+      // get index to the perceTable
+      uint32_t idx = this->perceptron.hash(pc);
+      // condition for tranning 
+      if(this->perceptron.sign(this->perceptron.lastOutome)!=branch || 
+                 abs(this->perceptron.lastOutome)<=this->perceptron.threshold ){
+        this->perceptron.perceTable[idx][0]+=t;
+        for (int i=0;i<this->numHistory;i++)
+          this->perceptron.perceTable[idx][i+1]+=(int32_t)t*this->historyTable[i];
+      }
+      // update history table
+      this->historyTable.pop_front();
+      this->historyTable.push_back(t);
+      break;
+    }
+    default:
+      break;
   }
+  
 }
 
 std::string BranchPredictor::strategyName() {
@@ -89,4 +133,17 @@ std::string BranchPredictor::strategyName() {
     break;
   }
   return "error"; // should not go here
+}
+
+/* Get hash value to index the perceptron table */
+uint32_t BranchPredictor::Perceptron::hash(uint32_t pc){
+  return pc%this->numPerceptrons;
+}
+
+/* Sign function to change outcome to bool */
+bool BranchPredictor::Perceptron::sign(int32_t lastOutcome){
+  if(lastOutcome>=0)
+    return true;
+  else
+    return false;
 }
