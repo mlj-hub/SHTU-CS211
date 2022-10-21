@@ -5,10 +5,14 @@
 #include "BranchPredictor.h"
 #include "Debug.h"
 
-BranchPredictor::BranchPredictor() {
+BranchPredictor::BranchPredictor(int32_t numHistory, int32_t numPerce,int32_t threshold):
+perceptron(numHistory+1,numPerce,threshold) {
   for (int i = 0; i < PRED_BUF_SIZE; ++i) {
     this->predbuf[i] = WEAK_TAKEN;
   }
+  // build the history table 
+  this->historyTable.resize(numHistory);
+  this->historySize = numHistory;
 }
 
 BranchPredictor::~BranchPredictor() {}
@@ -78,6 +82,8 @@ std::string BranchPredictor::strategyName() {
     return "Back Taken Forward Not Taken";
   case BPB:
     return "Branch Prediction Buffer";
+  case PERCEPTRON:
+    return "Branch Prediction with Peceptron";
   default:
     dbgprintf("Unknown Branch Perdiction Strategy!\n");
     break;

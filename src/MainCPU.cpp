@@ -30,7 +30,8 @@ uint32_t stackSize = 0x400000;
 MemoryManager memory;
 Cache *l1Cache, *l2Cache, *l3Cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
-BranchPredictor branchPredictor;
+// build the branchPredictor with default parameters
+BranchPredictor branchPredictor(34,128,79);
 Simulator simulator(&memory, &branchPredictor);
 
 int main(int argc, char **argv) {
