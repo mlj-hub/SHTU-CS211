@@ -31,7 +31,9 @@ MemoryManager memory;
 Cache *l1Cache, *l2Cache, *l3Cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
 // build the branchPredictor with default parameters
-BranchPredictor branchPredictor(34,128,79);
+int32_t numHistory=34, threshold=79;
+uint32_t budget = 8; // hardware budget, in unit KB
+BranchPredictor branchPredictor(numHistory,budget,threshold);
 Simulator simulator(&memory, &branchPredictor);
 
 int main(int argc, char **argv) {

@@ -33,12 +33,16 @@ public:
       this->perceTable.resize(0);
     }
     // build perceptron with the given parameters
-    Perceptron(uint32_t numWeight,uint32_t numPerceptrons,int32_t threshold){
-      this->numPerceptrons = numPerceptrons;
+    Perceptron(uint32_t numWeight,uint32_t budget,int32_t threshold){
       this->numWeight = numWeight;
       this->threshold = threshold;
       this->curOutcome = 0;
       this->lastOutome = 0;
+      this->bitsWeight = 8;
+      this->budget = budget;
+      // calculate the number of perceptron
+      this->numPerceptrons = (int32_t)(budget*1024/(numWeight*this->bitsWeight));
+      printf("number of perceptron:%d\n",this->numPerceptrons);
       // init percetable
       this->perceTable.resize(numPerceptrons);
       // init each perceptrons
@@ -53,11 +57,13 @@ public:
     int32_t threshold;
     int32_t curOutcome;
     int32_t lastOutome;
+    int32_t bitsWeight; // how many bits a weight has
+    int32_t budget;     // the hardware budget, in unit KB
     // percetrons table
     std::vector<std::vector<int32_t>> perceTable;
   };
   // update 
-  BranchPredictor(int32_t numHistory=0,int32_t numPerce=0,int32_t threshold = 0);
+  BranchPredictor(int32_t numHistory=0,uint32_t budget=0,int32_t threshold = 0);
   ~BranchPredictor();
 
   bool predict(uint32_t pc, uint32_t insttype, int64_t op1, int64_t op2,

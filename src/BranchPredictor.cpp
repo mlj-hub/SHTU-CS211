@@ -5,8 +5,8 @@
 #include "BranchPredictor.h"
 #include "Debug.h"
 
-BranchPredictor::BranchPredictor(int32_t numHistory, int32_t numPerce,int32_t threshold):
-perceptron(numHistory+1,numPerce,threshold) {
+BranchPredictor::BranchPredictor(int32_t numHistory, uint32_t budget,int32_t threshold):
+perceptron(numHistory+1,budget,threshold) {
   for (int i = 0; i < PRED_BUF_SIZE; ++i) {
     this->predbuf[i] = WEAK_TAKEN;
   }
