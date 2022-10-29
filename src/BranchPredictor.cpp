@@ -147,3 +147,38 @@ bool BranchPredictor::Perceptron::sign(int32_t lastOutcome){
   else
     return false;
 }
+
+void BranchPredictor::setParameter(int32_t numHistory,uint32_t budget,int32_t threshold){
+  this->perceptron.setParameter(numHistory+1,budget,threshold);
+}
+
+void BranchPredictor::Perceptron::setParameter(uint32_t numWeight,uint32_t budget,int32_t threshold){
+  this->numWeight = numWeight;
+  this->threshold = threshold;
+  this->bitsWeight = 8;
+  this->budget = budget;
+  // calculate the number of perceptron
+  this->numPerceptrons = (int32_t)(budget*1024/(numWeight*this->bitsWeight));
+  // init percetable
+  this->perceTable.resize(numPerceptrons);
+  // init each perceptrons
+  for(uint32_t i=0;i<this->numPerceptrons;i++)
+    this->perceTable[i].resize(numWeight);
+}
+
+BranchPredictor::Perceptron::Perceptron(uint32_t numWeight,uint32_t budget,int32_t threshold){
+    this->numWeight = numWeight;
+    this->threshold = threshold;
+    this->curOutcome = 0;
+    this->lastOutome = 0;
+    this->bitsWeight = 8;
+    this->budget = budget;
+    // calculate the number of perceptron
+    this->numPerceptrons = (int32_t)(budget*1024/(numWeight*this->bitsWeight));
+    // init percetable
+    this->perceTable.resize(numPerceptrons);
+    // init each perceptrons
+    for(uint32_t i=0;i<this->numPerceptrons;i++)
+      this->perceTable[i].resize(numWeight);
+}
+

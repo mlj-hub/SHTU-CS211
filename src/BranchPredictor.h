@@ -29,26 +29,10 @@ public:
   } strategy;
 
   struct Perceptron{
-    Perceptron(){
-      this->perceTable.resize(0);
-    }
+    Perceptron(){ this->perceTable.resize(0);}
     // build perceptron with the given parameters
-    Perceptron(uint32_t numWeight,uint32_t budget,int32_t threshold){
-      this->numWeight = numWeight;
-      this->threshold = threshold;
-      this->curOutcome = 0;
-      this->lastOutome = 0;
-      this->bitsWeight = 8;
-      this->budget = budget;
-      // calculate the number of perceptron
-      this->numPerceptrons = (int32_t)(budget*1024/(numWeight*this->bitsWeight));
-      printf("number of perceptron:%d\n",this->numPerceptrons);
-      // init percetable
-      this->perceTable.resize(numPerceptrons);
-      // init each perceptrons
-      for(uint32_t i=0;i<this->numPerceptrons;i++)
-        this->perceTable[i].resize(numWeight);
-    }
+    Perceptron(uint32_t numWeight,uint32_t budget,int32_t threshold);
+    void setParameter(uint32_t numWeight=0,uint32_t budget=0,int32_t threshold = 0);
     // hash function used to index perceptron table
     uint32_t hash(uint32_t pc);
     bool sign(int32_t lastOutcome);
@@ -65,6 +49,8 @@ public:
   // update 
   BranchPredictor(int32_t numHistory=0,uint32_t budget=0,int32_t threshold = 0);
   ~BranchPredictor();
+
+  void setParameter(int32_t numHistory=0,uint32_t budget=0,int32_t threshold = 0);
 
   bool predict(uint32_t pc, uint32_t insttype, int64_t op1, int64_t op2,
                int64_t offset);

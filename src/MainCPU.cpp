@@ -166,7 +166,7 @@ void printUsage() {
   printf("Parameters: \n\t[-v] verbose output \n\t[-s] single step\n");
   printf("\t[-d] dump memory and register trace to dump.txt\n");
   printf("\t[-b param] branch perdiction strategy, accepted param AT, NT, "
-         "BTFNT, BPB\n");
+         "BTFNT, BPB, PERCEPTRON\n");
 }
 
 void printElfInfo(ELFIO::elfio *reader) {
