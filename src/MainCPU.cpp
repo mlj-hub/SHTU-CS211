@@ -30,18 +30,16 @@ uint32_t stackSize = 0x400000;
 MemoryManager memory;
 Cache *l1Cache, *l2Cache, *l3Cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
-// build the branchPredictor with default parameters
-int32_t numHistory=34, threshold=79;
+int32_t numHistory=34, threshold=79; // length of history register and threshold
 uint32_t budget = 8; // hardware budget, in unit KB
-BranchPredictor branchPredictor(numHistory,budget,threshold);
-Simulator simulator(&memory, &branchPredictor);
 
 int main(int argc, char **argv) {
   if (!parseParameters(argc, argv)) {
     printUsage();
     exit(-1);
   }
-
+  BranchPredictor branchPredictor(numHistory,budget,threshold);
+  Simulator simulator(&memory, &branchPredictor);
   // Init cache
   Cache::Policy l1Policy, l2Policy, l3Policy;
 
@@ -141,6 +139,24 @@ bool parseParameters(int argc, char **argv) {
             return false;
           }
         } else {
+          return false;
+        }
+        break;
+      case 'h':
+        if(i+1<argc){
+          std::string str = argv[i+1];
+          i++;
+          numHistory = atoi(str.c_str());
+        }else{
+          return false;
+        }
+        break;
+      case 't':
+        if(i+1<argc){
+          std::string str = argv[i+1];
+          i++;
+          threshold = atoi(str.c_str());
+        }else{
           return false;
         }
         break;
