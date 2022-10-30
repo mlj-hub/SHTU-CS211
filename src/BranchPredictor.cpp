@@ -174,7 +174,7 @@ BranchPredictor::Perceptron::Perceptron(uint32_t numWeight,uint32_t budget,int32
     this->bitsWeight = 8;
     this->budget = budget;
     // calculate the number of perceptron
-    this->numPerceptrons = (int32_t)(budget*1024/(numWeight*this->bitsWeight));
+    this->numPerceptrons = (int32_t)(budget*1024*8/(numWeight*this->bitsWeight));
     // init percetable
     this->perceTable.resize(numPerceptrons);
     // init each perceptrons
