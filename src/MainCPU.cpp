@@ -21,7 +21,8 @@ void printUsage();
 void printElfInfo(ELFIO::elfio *reader);
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
 
-char *elfFile = nullptr;
+char *elfFile1 = nullptr;
+char *elfFile2 = nullptr;
 bool verbose = 0;
 bool isSingleStep = 0;
 bool dumpHistory = 0;
@@ -71,8 +72,8 @@ int main(int argc, char **argv) {
 
   // Read ELF file
   ELFIO::elfio reader;
-  if (!reader.load(elfFile)) {
-    fprintf(stderr, "Fail to load ELF file %s!\n", elfFile);
+  if (!reader.load(elfFile1)) {
+    fprintf(stderr, "Fail to load ELF file %s!\n", elfFile1);
     return -1;
   }
 
@@ -138,18 +139,29 @@ bool parseParameters(int argc, char **argv) {
           return false;
         }
         break;
+      case 'c':
+        if(argv[i][2]=='0'){
+          if(elfFile1==nullptr)
+            elfFile1 = argv[++i];
+          else
+            return false;
+        }
+        else if(argv[i][2]=='1'){
+          if(elfFile2==nullptr)
+            elfFile2 = argv[++i];
+          else
+            return false;
+        }
+        else{
+          return false;
+        }
+        break;
       default:
-        return false;
-      }
-    } else {
-      if (elfFile == nullptr) {
-        elfFile = argv[i];
-      } else {
         return false;
       }
     }
   }
-  if (elfFile == nullptr) {
+  if (elfFile1 == nullptr && elfFile2 == nullptr) {
     return false;
   }
   return true;
