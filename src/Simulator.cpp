@@ -174,7 +174,7 @@ void Simulator::fetch() {
   uint32_t len = 4;
 
   if (this->verbose) {
-    printf("Fetched instruction 0x%.8x at address 0x%llx\n", inst, this->pc);
+    printf("Fetched instruction 0x%.8x at address 0x%lx\n", inst, this->pc);
   }
 
   this->fRegNew.bubble = false;
@@ -674,7 +674,7 @@ void Simulator::decode() {
     }
 
     char buf[4096];
-    sprintf(buf, "0x%llx: %s\n", this->fReg.pc, inststr.c_str());
+    sprintf(buf, "0x%lx: %s\n", this->fReg.pc, inststr.c_str());
     this->history.instRecord.push_back(buf);
 
     if (verbose) {
@@ -1340,12 +1340,16 @@ int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
     }
     this->printStatistics();
     exit(0);
-  case 4: // read char
-    scanf(" %c", (char*)&op1);
+  case 4:{ // read char
+    int temp = scanf(" %c", (char*)&op1);
+    (void) temp;
     break;
-  case 5: // read num
-    scanf(" %lld", &op1);
+  }
+  case 5:{ // read num
+    int temp = scanf(" %ld", &op1);
+    (void) temp;
     break;
+  }
   default:
     this->panic("Unknown syscall type %d\n", type);
   }
@@ -1354,9 +1358,9 @@ int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
 
 void Simulator::printInfo() {
   printf("------------ CPU STATE ------------\n");
-  printf("PC: 0x%llx\n", this->pc);
+  printf("PC: 0x%lx\n", this->pc);
   for (uint32_t i = 0; i < 32; ++i) {
-    printf("%s: 0x%.8llx(%lld) ", REGNAME[i], this->reg[i], this->reg[i]);
+    printf("%s: 0x%.8lx(%ld) ", REGNAME[i], this->reg[i], this->reg[i]);
     if (i % 4 == 3)
       printf("\n");
   }
@@ -1387,10 +1391,10 @@ std::string Simulator::getRegInfoStr() {
   char buf[65536];
 
   str += "------------ CPU STATE ------------\n";
-  sprintf(buf, "PC: 0x%llx\n", this->pc);
+  sprintf(buf, "PC: 0x%lx\n", this->pc);
   str += buf;
   for (uint32_t i = 0; i < 32; ++i) {
-    sprintf(buf, "%s: 0x%.8llx(%lld) ", REGNAME[i], this->reg[i], this->reg[i]);
+    sprintf(buf, "%s: 0x%.8lx(%ld) ", REGNAME[i], this->reg[i], this->reg[i]);
     str += buf;
     if (i % 4 == 3) {
       str += "\n";

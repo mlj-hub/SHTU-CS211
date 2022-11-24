@@ -192,7 +192,7 @@ void printElfInfo(ELFIO::elfio *reader) {
   for (int i = 0; i < sec_num; ++i) {
     const ELFIO::section *psec = reader->sections[i];
 
-    printf("[%d]\t%-12s\t0x%llx\t%lld\n", i, psec->get_name().c_str(),
+    printf("[%d]\t%-12s\t0x%lx\t%ld\n", i, psec->get_name().c_str(),
            psec->get_address(), psec->get_size());
   }
 
@@ -203,7 +203,7 @@ void printElfInfo(ELFIO::elfio *reader) {
   for (int i = 0; i < seg_num; ++i) {
     const ELFIO::segment *pseg = reader->segments[i];
 
-    printf("[%d]\t0x%x\t0x%llx\t%lld\t%lld\n", i, pseg->get_flags(),
+    printf("[%d]\t0x%x\t0x%lx\t%ld\t%ld\n", i, pseg->get_flags(),
            pseg->get_virtual_address(), pseg->get_file_size(),
            pseg->get_memory_size());
   }

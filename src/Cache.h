@@ -34,7 +34,7 @@ public:
     uint32_t size;
     uint32_t lastReference;
     std::vector<uint8_t> data;
-    Block() {}
+    Block():valid(0),modified(0),tag(0),id(0),size(0),lastReference(0) {}
     Block(const Block &b)
         : valid(b.valid), modified(b.modified), tag(b.tag), id(b.id),
           size(b.size) {

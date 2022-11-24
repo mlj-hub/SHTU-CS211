@@ -30,7 +30,7 @@ Cache::Cache(MemoryManager *manager, Policy policy, Cache *lowerCache,
 }
 
 bool Cache::inCache(uint32_t addr) {
-  return getBlockId(addr) != -1 ? true : false;
+  return getBlockId(addr) != (uint32_t)-1 ? true : false;
 }
 
 uint32_t Cache::getBlockId(uint32_t addr) {
@@ -140,9 +140,9 @@ void Cache::printInfo(bool verbose) {
   printf("Miss Latency: %d\n", this->policy.missLatency);
 
   if (verbose) {
-    for (int j = 0; j < this->blocks.size(); ++j) {
+    for (size_t j = 0; j < this->blocks.size(); ++j) {
       const Block &b = this->blocks[j];
-      printf("Block %d: tag 0x%x id %d %s %s (last ref %d)\n", j, b.tag, b.id,
+      printf("Block %ld: tag 0x%x id %d %s %s (last ref %d)\n", j, b.tag, b.id,
              b.valid ? "valid" : "invalid",
              b.modified ? "modified" : "unmodified", b.lastReference);
       // printf("Data: ");
@@ -159,7 +159,7 @@ void Cache::printStatistics() {
   printf("Num Write: %d\n", this->statistics.numWrite);
   printf("Num Hit: %d\n", this->statistics.numHit);
   printf("Num Miss: %d\n", this->statistics.numMiss);
-  printf("Total Cycles: %llu\n", this->statistics.totalCycles);
+  printf("Total Cycles: %lu\n", this->statistics.totalCycles);
   if (this->lowerCache != nullptr) {
     printf("---------- LOWER CACHE ----------\n");
     this->lowerCache->printStatistics();
