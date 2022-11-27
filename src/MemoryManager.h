@@ -45,7 +45,7 @@ public:
 
   std::string dumpMemory();
 
-  void setCache(Cache *cache);  
+  void setCache(Cache *cache0, Cache * cache1);  
 
 private:
   uint32_t getFirstEntryId(uint32_t addr);
@@ -54,7 +54,8 @@ private:
   bool isAddrExist(uint32_t addr);
 
   uint8_t **memory[1024];
-  Cache *cache;
+  Cache *cache0;
+  Cache *cache1;
 };
 
 #endif

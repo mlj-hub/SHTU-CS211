@@ -8,8 +8,11 @@
 #include <cstdio>
 #include <string>
 
+extern pthread_t core0;
+extern pthread_t core1;
+
 MemoryManager::MemoryManager() {
-  this->cache = nullptr;
+  this->cache0 = this->cache1 = nullptr;
   for (uint32_t i = 0; i < 1024; ++i) {
     this->memory[i] = nullptr;
   }
@@ -67,8 +70,9 @@ bool MemoryManager::setByte(uint32_t addr, uint8_t val, uint32_t *cycles) {
     dbgprintf("Byte write to invalid addr 0x%x!\n", addr);
     return false;
   }
-  if (this->cache != nullptr) {
-    this->cache->setByte(addr, val, cycles);
+  Cache * cache = pthread_self() == core0? cache0:cache1;
+  if (cache != nullptr) {
+    cache->setByte(addr, val, cycles);
     return true;
   }
 
@@ -97,8 +101,9 @@ uint8_t MemoryManager::getByte(uint32_t addr, uint32_t *cycles) {
     dbgprintf("Byte read to invalid addr 0x%x!\n", addr);
     return false;
   }
-  if (this->cache != nullptr) {
-    return this->cache->getByte(addr, cycles);
+  Cache * cache = pthread_self() == core0? cache0:cache1;
+  if (cache != nullptr) {
+    return cache->getByte(addr, cycles);
   }
   uint32_t i = this->getFirstEntryId(addr);
   uint32_t j = this->getSecondEntryId(addr);
@@ -200,8 +205,10 @@ void MemoryManager::printInfo() {
 }
 
 void MemoryManager::printStatistics() {
-  printf("---------- CACHE STATISTICS ----------\n");
-  this->cache->printStatistics();
+  printf("---------- CACHE0 STATISTICS ----------\n");
+  this->cache0->printStatistics();
+  printf("---------- CACHE1 STATISTICS ----------\n");
+  this->cache1->printStatistics();
 }
 
 std::string MemoryManager::dumpMemory() {
@@ -252,4 +259,4 @@ bool MemoryManager::isAddrExist(uint32_t addr) {
   return false;
 }
 
-void MemoryManager::setCache(Cache *cache) { this->cache = cache; }
+void MemoryManager::setCache(Cache *cache0,Cache* cache1) { this->cache0 = cache0; this->cache1 = cache1; }

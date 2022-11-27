@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <pthread.h>
 
 #include <elfio/elfio.hpp>
 
@@ -19,20 +20,26 @@
 bool parseParameters(int argc, char **argv);
 void printUsage();
 void printElfInfo(ELFIO::elfio *reader);
-void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
+void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory,uint32_t base);
+void * runCore0(void *);
+void * runCore1(void *);
 
 char *elfFile1 = nullptr;
 char *elfFile2 = nullptr;
 bool verbose = 0;
 bool isSingleStep = 0;
 bool dumpHistory = 0;
-uint32_t stackBaseAddr = 0x80000000;
+uint32_t stackBaseAddrCore0 = 0xa0000000;
+uint32_t stackBaseAddrCore1 = 0x90000000;
 uint32_t stackSize = 0x400000;
 MemoryManager memory;
-Cache *l1Cache, *l2Cache, *l3Cache;
+Cache *l1Cache1, *l2Cache1, *l1Cache2, *l2Cache2, *l3Cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
 BranchPredictor branchPredictor;
-Simulator simulator(&memory, &branchPredictor);
+uint32_t core0Base=0x800000, core1Base=0x40800000;
+Simulator simulator0(&memory, &branchPredictor,core0Base);
+Simulator simulator1(&memory, &branchPredictor,core1Base);
+pthread_t core0, core1;
 
 int main(int argc, char **argv) {
   if (!parseParameters(argc, argv)) {
@@ -65,43 +72,81 @@ int main(int argc, char **argv) {
   l3Policy.missLatency = 100;
 
   l3Cache = new Cache(&memory, l3Policy);
-  l2Cache = new Cache(&memory, l2Policy, l3Cache);
-  l1Cache = new Cache(&memory, l1Policy, l2Cache);
 
-  memory.setCache(l1Cache);
+  l2Cache1 = new Cache(&memory, l2Policy, l3Cache);
+  l1Cache1 = new Cache(&memory, l1Policy, l2Cache1);
 
+  l2Cache2 = new Cache(&memory,l2Policy,l3Cache);
+  l1Cache2 = new Cache(&memory,l1Policy,l2Cache2);
+
+  memory.setCache(l1Cache1,l1Cache2);
+  
   // Read ELF file
-  ELFIO::elfio reader;
-  if (!reader.load(elfFile1)) {
+  ELFIO::elfio reader0;
+  ELFIO::elfio reader1;
+  if(elfFile1 && !reader0.load(elfFile1)){
+    fprintf(stderr, "Fail to load ELF file %s!\n", elfFile1);
+    return -1;
+  }
+  if (elfFile2 &&!reader1.load(elfFile2)) {
     fprintf(stderr, "Fail to load ELF file %s!\n", elfFile1);
     return -1;
   }
 
   if (verbose) {
-    printElfInfo(&reader);
+    printElfInfo(&reader0);
+    printElfInfo(&reader1);
   }
-
-  loadElfToMemory(&reader, &memory);
-
+  if(elfFile1)
+    loadElfToMemory(&reader0, &memory,core0Base);
+  if(elfFile2)
+    loadElfToMemory(&reader1, &memory,core1Base);
   if (verbose) {
     memory.printInfo();
   }
 
-  simulator.isSingleStep = isSingleStep;
-  simulator.verbose = verbose;
-  simulator.shouldDumpHistory = dumpHistory;
-  simulator.branchPredictor->strategy = strategy;
-  simulator.pc = reader.get_entry();
-  simulator.initStack(stackBaseAddr, stackSize);
-  simulator.simulate();
+  simulator0.isSingleStep = isSingleStep;
+  simulator0.verbose = verbose;
+  simulator0.shouldDumpHistory = dumpHistory;
+  simulator0.branchPredictor->strategy = strategy;
+  simulator0.core = core0;
+  simulator0.pc = reader0.get_entry();
+  simulator0.initStack(stackBaseAddrCore0, stackSize);
+
+  simulator1.isSingleStep = isSingleStep;
+  simulator1.verbose = verbose;
+  simulator1.shouldDumpHistory = dumpHistory;
+  simulator1.branchPredictor->strategy = strategy;
+  simulator1.core = core1;
+  simulator1.pc = reader1.get_entry();
+  simulator1.initStack(stackBaseAddrCore1, stackSize);
+
+  if(elfFile1){
+    int successCore0 = pthread_create(&core0,NULL,runCore0,NULL);
+    if(successCore0)
+      printf("core0 fails\n");
+  }
+  if(elfFile2){
+    int successCore1 = pthread_create(&core1,NULL,runCore1,NULL);
+    if(successCore1)
+      printf("core1 fails\n");
+  }
+
+  if(elfFile1)
+    pthread_join(core0,NULL);
+  if(elfFile2)
+    pthread_join(core1,NULL);
 
   if (dumpHistory) {
     printf("Dumping history to dump.txt...\n");
-    simulator.dumpHistory();
+    simulator0.dumpHistory();
+    simulator1.dumpHistory();
   }
 
-  delete l1Cache;
-  delete l2Cache;
+  delete l1Cache1;
+  delete l2Cache1;
+  delete l1Cache2;
+  delete l2Cache2;
   delete l3Cache;
   return 0;
 }
@@ -223,7 +268,7 @@ void printElfInfo(ELFIO::elfio *reader) {
   printf("===================================\n");
 }
 
-void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory) {
+void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory,uint32_t base) {
   ELFIO::Elf_Half seg_num = reader->segments.size();
   for (int i = 0; i < seg_num; ++i) {
     const ELFIO::segment *pseg = reader->segments[i];
@@ -242,16 +287,26 @@ void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory) {
     uint32_t memsz = pseg->get_memory_size();
     uint32_t addr = (uint32_t)pseg->get_virtual_address();
 
-    for (uint32_t p = addr; p < addr + memsz; ++p) {
+    for (uint32_t p = addr+base; p < addr + memsz+base; ++p) {
       if (!memory->isPageExist(p)) {
         memory->addPage(p);
       }
 
-      if (p < addr + filesz) {
-        memory->setByteNoCache(p, pseg->get_data()[p - addr]);
+      if (p < addr + filesz+base) {
+        memory->setByteNoCache(p, pseg->get_data()[p - addr-base]);
       } else {
         memory->setByteNoCache(p, 0);
       }
     }
   }
+}
+
+void * runCore0(void * _){
+  simulator0.simulate();
+  return NULL;
+}
+
+void * runCore1(void * _){
+  simulator1.simulate();
+  return NULL;
 }
