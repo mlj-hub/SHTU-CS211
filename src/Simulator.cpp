@@ -61,10 +61,11 @@ const char *INSTNAME[]{
 
 using namespace RISCV;
 
-Simulator::Simulator(MemoryManager *memory, BranchPredictor *predictor) {
+Simulator::Simulator(MemoryManager *memory, BranchPredictor *predictor,uint32_t base) {
   this->memory = memory;
   this->branchPredictor = predictor;
   this->pc = 0;
+  this->base = base;
   for (int i = 0; i < REGNUM; ++i) {
     this->reg[i] = 0;
   }
@@ -170,7 +171,7 @@ void Simulator::fetch() {
     this->panic("Illegal PC 0x%x!\n", this->pc);
   }
 
-  uint32_t inst = this->memory->getInt(this->pc);
+  uint32_t inst = this->memory->getInt(this->pc+this->base);
   uint32_t len = 4;
 
   if (this->verbose) {
@@ -1135,6 +1136,8 @@ void Simulator::memoryAccess() {
   uint32_t cycles = 0;
 
   if (writeMem) {
+    if(!this->inStack(out))
+      out+=this->base;
     switch (memLen) {
     case 1:
       good = this->memory->setByte(out, op2, &cycles);
@@ -1158,6 +1161,8 @@ void Simulator::memoryAccess() {
   }
 
   if (readMem) {
+    if(!this->inStack(out))
+      out+=this->base;
     switch (memLen) {
     case 1:
       if (readSignExt) {
@@ -1318,6 +1323,8 @@ int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
   switch (type) {
   case 0: { // print string
     uint32_t addr = arg1;
+    if(!this->inStack(addr))
+      addr+=base;
     char ch = this->memory->getByte(addr);
     while (ch != '\0') {
       printf("%c", ch);
@@ -1339,7 +1346,7 @@ int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
       this->dumpHistory();
     }
     this->printStatistics();
-    exit(0);
+    pthread_exit(NULL);
   case 4:{ // read char
     int temp = scanf(" %c", (char*)&op1);
     (void) temp;
@@ -1437,4 +1444,8 @@ void Simulator::panic(const char *format, ...) {
   this->dumpHistory();
   fprintf(stderr, "Execution history and memory dump in dump.txt\n");
   exit(-1);
+}
+
+bool Simulator::inStack(uint32_t addr){
+  return (addr <= this->stackBase && addr >= this->stackBase-this->maximumStackSize);
 }

@@ -184,8 +184,10 @@ public:
   uint32_t maximumStackSize;
   MemoryManager *memory;
   BranchPredictor *branchPredictor;
+  uint32_t base;
+  int core;
 
-  Simulator(MemoryManager *memory, BranchPredictor *predictor);
+  Simulator(MemoryManager *memory, BranchPredictor *predictor,uint32_t base);
   ~Simulator();
 
   void initStack(uint32_t baseaddr, uint32_t maxSize);
@@ -292,6 +294,7 @@ private:
   void writeBack();
 
   int64_t handleSystemCall(int64_t op1, int64_t op2);
+  bool inStack(uint32_t addr);
 
   std::string getRegInfoStr();
   void panic(const char *format, ...);
