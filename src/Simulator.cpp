@@ -9,7 +9,7 @@
 
 #include "Debug.h"
 #include "Simulator.h"
-
+extern pthread_t core0;
 namespace RISCV {
 
 const char *REGNAME[32] = {
@@ -61,11 +61,13 @@ const char *INSTNAME[]{
 
 using namespace RISCV;
 
-Simulator::Simulator(MemoryManager *memory, BranchPredictor *predictor,uint32_t base) {
+Simulator::Simulator(MemoryManager *memory, BranchPredictor *predictor,uint32_t base,uint32_t sharedBase, uint32_t sharedSize) {
   this->memory = memory;
   this->branchPredictor = predictor;
   this->pc = 0;
   this->base = base;
+  this->sharedBase = sharedBase;
+  this->sharedBound = this->sharedBase + sharedSize;
   for (int i = 0; i < REGNUM; ++i) {
     this->reg[i] = 0;
   }
@@ -170,8 +172,13 @@ void Simulator::fetch() {
   if (this->pc % 2 != 0) {
     this->panic("Illegal PC 0x%x!\n", this->pc);
   }
+  uint32_t fetchAddr = this->pc;
+  uint32_t inst = 0;
 
-  uint32_t inst = this->memory->getInt(this->pc+this->base);
+  if(this->inStack(fetchAddr) || this->inShared(fetchAddr))
+    inst = this->memory->getInt(fetchAddr);
+  else
+    inst = this->memory->getInt(fetchAddr+this->base);
   uint32_t len = 4;
 
   if (this->verbose) {
@@ -1136,7 +1143,7 @@ void Simulator::memoryAccess() {
   uint32_t cycles = 0;
 
   if (writeMem) {
-    if(!this->inStack(out))
+    if(!this->inStack(out) && !this->inShared(out))
       out+=this->base;
     switch (memLen) {
     case 1:
@@ -1161,7 +1168,7 @@ void Simulator::memoryAccess() {
   }
 
   if (readMem) {
-    if(!this->inStack(out))
+    if(!this->inStack(out) && !this->inShared(out))
       out+=this->base;
     switch (memLen) {
     case 1:
@@ -1323,7 +1330,7 @@ int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
   switch (type) {
   case 0: { // print string
     uint32_t addr = arg1;
-    if(!this->inStack(addr))
+    if(!this->inStack(addr) && !this->inShared(addr))
       addr+=base;
     char ch = this->memory->getByte(addr);
     while (ch != '\0') {
@@ -1448,4 +1455,8 @@ void Simulator::panic(const char *format, ...) {
 
 bool Simulator::inStack(uint32_t addr){
   return (addr <= this->stackBase && addr >= this->stackBase-this->maximumStackSize);
+}
+
+bool Simulator::inShared(uint32_t addr){
+  return (addr >= this->sharedBase && addr < this->sharedBound );
 }

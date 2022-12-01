@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1)
 project(RISCV-Simulator)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS "-O2 -g -Wall -Werror")
+set(CMAKE_CXX_FLAGS "-O2 -g -Wall -Werror -lpthread")
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
@@ -14,6 +14,7 @@ add_executable(
     src/Simulator.cpp 
     src/BranchPredictor.cpp 
     src/Cache.cpp
+    src/DirectoryManager.cpp
 )
 
 # add_executable(

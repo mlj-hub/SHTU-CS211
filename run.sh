@@ -2,5 +2,5 @@
 cd build
 cmake ..
 make
-./Simulator ../riscv-elf/lab0.riscv
-./Simulator ../riscv-elf/lab0.riscv -v > ./log.txt
+./Simulator -c0 ../riscv-elf/lab3-core0.riscv -c1 ../riscv-elf/lab3-core1.riscv
+# ./Simulator -c0 ../riscv-elf/lab3-core0.riscv -c1 ../riscv-elf/lab3-core1.riscv -v > log.txt

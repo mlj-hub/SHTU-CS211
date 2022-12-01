@@ -12,8 +12,10 @@
 #include <elfio/elfio.hpp>
 
 #include "Cache.h"
+#include "DirectoryManager.h"
 
 class Cache;
+class DirectoryManager;
 
 class MemoryManager
 {
@@ -44,8 +46,12 @@ public:
   void printStatistics();
 
   std::string dumpMemory();
+  void initShared(uint32_t startAddr,uint32_t size);
 
   void setCache(Cache *cache0, Cache * cache1);  
+  DirectoryManager * getDirectory(uint32_t addr);
+  DirectoryManager * directory0;
+  DirectoryManager * directory1;
 
 private:
   uint32_t getFirstEntryId(uint32_t addr);

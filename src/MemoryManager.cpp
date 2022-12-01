@@ -259,4 +259,24 @@ bool MemoryManager::isAddrExist(uint32_t addr) {
   return false;
 }
 
+void MemoryManager::initShared(uint32_t startAddr,uint32_t size){
+  for (uint32_t addr = startAddr; addr < startAddr +size; addr++) {
+    if (!this->isPageExist(addr)) {
+      this->addPage(addr);
+    }
+    this->setByteNoCache(addr, 0);
+  }
+}
+
+DirectoryManager* MemoryManager::getDirectory(uint32_t addr){
+  if(this->directory0->inDirectory(addr))
+    return directory0;
+  else if(this->directory1->inDirectory(addr))
+    return directory1;
+  else{
+    fprintf(stderr,"not shared\n");
+    exit(-1);
+  }
+}
+
 void MemoryManager::setCache(Cache *cache0,Cache* cache1) { this->cache0 = cache0; this->cache1 = cache1; }
