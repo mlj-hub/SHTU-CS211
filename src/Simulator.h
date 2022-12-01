@@ -185,9 +185,10 @@ public:
   MemoryManager *memory;
   BranchPredictor *branchPredictor;
   uint32_t base;
+  uint32_t sharedBase, sharedBound;
   int core;
 
-  Simulator(MemoryManager *memory, BranchPredictor *predictor,uint32_t base);
+  Simulator(MemoryManager *memory, BranchPredictor *predictor,uint32_t base,uint32_t sharedBase, uint32_t sharedSize);
   ~Simulator();
 
   void initStack(uint32_t baseaddr, uint32_t maxSize);
@@ -295,6 +296,7 @@ private:
 
   int64_t handleSystemCall(int64_t op1, int64_t op2);
   bool inStack(uint32_t addr);
+  bool inShared(uint32_t addr);
 
   std::string getRegInfoStr();
   void panic(const char *format, ...);
