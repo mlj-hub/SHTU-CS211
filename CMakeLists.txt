@@ -14,6 +14,7 @@ add_executable(
     src/Simulator.cpp 
     src/BranchPredictor.cpp 
     src/Cache.cpp
+    src/DirectoryManager.cpp
 )
 
 # add_executable(
