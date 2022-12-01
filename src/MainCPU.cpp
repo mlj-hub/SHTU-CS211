@@ -16,6 +16,7 @@
 #include "Debug.h"
 #include "MemoryManager.h"
 #include "Simulator.h"
+#include "DirectoryManager.h"
 
 bool parseParameters(int argc, char **argv);
 void printUsage();
@@ -36,10 +37,14 @@ MemoryManager memory;
 Cache *l1Cache1, *l2Cache1, *l1Cache2, *l2Cache2, *l3Cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
 BranchPredictor branchPredictor;
+uint32_t sharedBase = 0x100000, sharedSize = 0x400000;
 uint32_t core0Base=0x800000, core1Base=0x40800000;
-Simulator simulator0(&memory, &branchPredictor,core0Base);
-Simulator simulator1(&memory, &branchPredictor,core1Base);
+Simulator simulator0(&memory, &branchPredictor,core0Base,sharedBase,sharedSize);
+Simulator simulator1(&memory, &branchPredictor,core1Base,sharedBase,sharedSize);
 pthread_t core0, core1;
+DirectoryManager directory0(sharedBase,0x200000,64),directory1(0x300000,0x200000,64);
+pthread_mutexattr_t attr;
+pthread_mutex_t LLCLock;
 
 int main(int argc, char **argv) {
   if (!parseParameters(argc, argv)) {
@@ -71,16 +76,34 @@ int main(int argc, char **argv) {
   l3Policy.hitLatency = 20;
   l3Policy.missLatency = 100;
 
-  l3Cache = new Cache(&memory, l3Policy);
+  pthread_mutexattr_init(&attr);
+  pthread_mutex_init(&LLCLock,&attr);
 
-  l2Cache1 = new Cache(&memory, l2Policy, l3Cache);
-  l1Cache1 = new Cache(&memory, l1Policy, l2Cache1);
+  l3Cache = new Cache(&memory, l3Policy,3,nullptr,&LLCLock);
 
-  l2Cache2 = new Cache(&memory,l2Policy,l3Cache);
-  l1Cache2 = new Cache(&memory,l1Policy,l2Cache2);
+  l2Cache1 = new Cache(&memory, l2Policy, 2,l3Cache);
+  l1Cache1 = new Cache(&memory, l1Policy, 1,l2Cache1);
+
+  l2Cache2 = new Cache(&memory,l2Policy,2,l3Cache);
+  l1Cache2 = new Cache(&memory,l1Policy,1,l2Cache2);
+
 
   memory.setCache(l1Cache1,l1Cache2);
-  
+  memory.initShared(sharedBase,sharedSize);
+
+  directory0.core0Cache = l1Cache1;
+  directory0.core1Cache = l1Cache2;
+  directory0.LLC = l3Cache;
+  directory0.memory = &memory;
+
+  directory1.core0Cache = l1Cache1;
+  directory1.core1Cache = l1Cache2;
+  directory1.LLC = l3Cache;
+  directory1.memory = &memory;
+
+  memory.directory0 = &directory0;
+  memory.directory1 = &directory1;
+
   // Read ELF file
   ELFIO::elfio reader0;
   ELFIO::elfio reader1;
